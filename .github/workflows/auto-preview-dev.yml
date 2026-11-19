@@ -107,7 +107,16 @@ jobs:
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: ./gradlew assembleUnstableRelease --no-configuration-cache
+        run: |
+          set +e
+          ./gradlew assembleUnstableRelease --no-configuration-cache 2>&1 | tee /tmp/build.log
+          exit ${PIPESTATUS[0]}
+
+      - name: Diagnose build failure
+        if: failure()
+        run: |
+          MSG=$(grep -E "e: file|error:|FAILURE:|What went wrong|Could not resolve|Could not find|Execution failed|Caused by|> Task .* FAILED|BUILD FAILED|Unresolved reference" /tmp/build.log | head -n 40 | sed ':a;N;$!ba;s/\n/%0A/g')
+          echo "::error::DIAG|${MSG}"
 
       - name: Upload APK
         uses: actions/upload-artifact@v7
