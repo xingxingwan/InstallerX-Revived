@@ -59,6 +59,7 @@ enum class BooleanSetting {
     OperationHistoryIndicatorsEnabled,
     PreferSystemIconForInstall,
     ShowDialogWhenPressingNotification,
+    SeparateInstallCompleteNotification,
     UserReadScopeTips,
     ApplyOrderInReverse,
     ApplySelectedFirst,

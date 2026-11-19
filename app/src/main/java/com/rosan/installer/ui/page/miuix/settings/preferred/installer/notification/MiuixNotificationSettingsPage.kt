@@ -228,6 +228,18 @@ fun MiuixNotificationSettingsPage(useBlur: Boolean, viewModel: NotificationSetti
                                 viewModel.dispatch(NotificationSettingsAction.ChangeAutoClearSeconds(seconds))
                             },
                         )
+
+                        // 5. Post a standalone completion notification
+                        MiuixSwitchWidget(
+                            title = stringResource(id = R.string.notification_separate_install_complete),
+                            description = stringResource(id = R.string.notification_separate_install_complete_desc),
+                            checked = uiState.separateInstallCompleteNotification,
+                            onCheckedChange = {
+                                viewModel.dispatch(
+                                    NotificationSettingsAction.ChangeSeparateInstallCompleteNotification(it),
+                                )
+                            },
+                        )
                     }
                 }
 

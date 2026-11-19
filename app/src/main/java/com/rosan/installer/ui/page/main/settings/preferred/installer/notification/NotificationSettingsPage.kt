@@ -232,6 +232,20 @@ fun NotificationSettingsPage(useBlur: Boolean, viewModel: NotificationSettingsVi
                             },
                         )
                     }
+
+                    item {
+                        SwitchWidget(
+                            icon = AppIcons.Notification,
+                            title = stringResource(id = R.string.notification_separate_install_complete),
+                            description = stringResource(id = R.string.notification_separate_install_complete_desc),
+                            checked = uiState.separateInstallCompleteNotification,
+                            onCheckedChange = {
+                                viewModel.dispatch(
+                                    NotificationSettingsAction.ChangeSeparateInstallCompleteNotification(it),
+                                )
+                            },
+                        )
+                    }
                 }
             }
         }

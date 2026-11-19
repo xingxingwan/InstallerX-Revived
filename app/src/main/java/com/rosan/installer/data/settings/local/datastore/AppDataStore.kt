@@ -96,6 +96,10 @@ class AppDataStore(private val dataStore: DataStore<Preferences>, private val js
         // ForegroundInfoHandler
         val SHOW_DIALOG_WHEN_PRESSING_NOTIFICATION =
             register(booleanPreferencesKey("show_dialog_when_pressing_notification"), PreferenceValueType.BOOLEAN)
+
+        // Post a standalone completion notification instead of mutating the progress one
+        val SEPARATE_INSTALL_COMPLETE_NOTIFICATION =
+            register(booleanPreferencesKey("separate_install_complete_notification"), PreferenceValueType.BOOLEAN)
         val NOTIFICATION_SUCCESS_AUTO_CLEAR_SECONDS =
             register(intPreferencesKey("notification_success_auto_clear_seconds"), PreferenceValueType.INT)
 

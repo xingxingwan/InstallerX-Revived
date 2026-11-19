@@ -26,6 +26,7 @@ data class AppPreferences(
     val showDialogWhenPressingNotification: Boolean,
     val closeSessionCountDown: Int,
     val notificationSuccessAutoClearSeconds: Int,
+    val separateInstallCompleteNotification: Boolean,
     val versionCompareInSingleLine: Boolean,
     val sdkCompareInMultiLine: Boolean,
     val showOPPOSpecial: Boolean,

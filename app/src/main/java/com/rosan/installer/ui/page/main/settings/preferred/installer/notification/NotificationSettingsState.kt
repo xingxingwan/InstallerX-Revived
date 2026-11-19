@@ -8,6 +8,7 @@ data class NotificationSettingsState(
     val miIslandBypassRestriction: Boolean = false,
     val miIslandOuterGlow: Boolean = true,
     val successAutoClearSeconds: Int = 10,
+    val separateInstallCompleteNotification: Boolean = true,
     val showDialogOnPress: Boolean = false,
     val miIslandBlockingInterval: Int = 100,
 ) {

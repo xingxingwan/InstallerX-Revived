@@ -70,6 +70,7 @@ class AppSettingsRepositoryImpl(
             showDialogWhenPressingNotification = prefs[AppDataStore.SHOW_DIALOG_WHEN_PRESSING_NOTIFICATION] ?: true,
             closeSessionCountDown = prefs[AppDataStore.CLOSE_SESSION_COUNTDOWN] ?: 3,
             notificationSuccessAutoClearSeconds = prefs[AppDataStore.NOTIFICATION_SUCCESS_AUTO_CLEAR_SECONDS] ?: 0,
+            separateInstallCompleteNotification = prefs[AppDataStore.SEPARATE_INSTALL_COMPLETE_NOTIFICATION] ?: true,
             versionCompareInSingleLine = prefs[AppDataStore.DIALOG_VERSION_COMPARE_SINGLE_LINE] ?: false,
             sdkCompareInMultiLine = prefs[AppDataStore.DIALOG_SDK_COMPARE_MULTI_LINE] ?: false,
             showOPPOSpecial = prefs[AppDataStore.DIALOG_SHOW_OPPO_SPECIAL] ?: false,
@@ -299,6 +300,8 @@ class AppSettingsRepositoryImpl(
         BooleanSetting.PreferSystemIconForInstall -> AppDataStore.PREFER_SYSTEM_ICON_FOR_INSTALL
 
         BooleanSetting.ShowDialogWhenPressingNotification -> AppDataStore.SHOW_DIALOG_WHEN_PRESSING_NOTIFICATION
+
+        BooleanSetting.SeparateInstallCompleteNotification -> AppDataStore.SEPARATE_INSTALL_COMPLETE_NOTIFICATION
 
         BooleanSetting.UserReadScopeTips -> AppDataStore.USER_READ_SCOPE_TIPS
 

@@ -63,6 +63,13 @@ class SessionNotifierImpl(
         const val NOTIFICATION_UPDATE_INTERVAL_MS = 500L
         const val PROGRESS_UPDATE_THRESHOLD = 0.03f
         const val XMSF_PACKAGE_NAME = "com.xiaomi.xmsf"
+
+        /**
+         * Tag of the standalone completion notification. The notification key is
+         * (tag, id), so a different tag gives the completion notification its own key
+         * while keeping the session id as the notification id.
+         */
+        const val RESULT_NOTIFICATION_TAG = "install_result"
     }
 
     private data class NotificationSettings(
@@ -74,6 +81,8 @@ class SessionNotifierImpl(
         val showMiIslandBlockingInterval: Int,
         val preferSystemIcon: Boolean,
         val preferDynamicColor: Boolean,
+        val separateInstallComplete: Boolean,
+        val successAutoClearSeconds: Int,
     )
 
     private val notificationManager = NotificationManagerCompat.from(context)
@@ -93,6 +102,9 @@ class SessionNotifierImpl(
     private var lastNotifiedEntity: ProgressEntity? = null
     private var currentInstallKey: String? = null
     private var currentInstallStartTime: Long = 0L
+
+    // Whether the completion notification is currently posted under [RESULT_NOTIFICATION_TAG]
+    private var hasStandaloneResult = false
 
     // Mi island magic
     private lateinit var globalAuthorizer: Authorizer
@@ -125,6 +137,8 @@ class SessionNotifierImpl(
 
     override fun cancel() {
         notificationManager.cancel(notificationId)
+        notificationManager.cancel(RESULT_NOTIFICATION_TAG, notificationId)
+        hasStandaloneResult = false
     }
 
     @SuppressLint("MissingPermission")
@@ -147,6 +161,11 @@ class SessionNotifierImpl(
                 showMiIslandBlockingInterval = appSettingsRepo.getInt(IntSetting.ShowMiIslandBlockingInterval, 100).first(),
                 preferSystemIcon = appSettingsRepo.getBoolean(BooleanSetting.PreferSystemIconForInstall, false).first(),
                 preferDynamicColor = appSettingsRepo.getBoolean(BooleanSetting.LiveActivityDynColorFollowPkgIcon, false).first(),
+                separateInstallComplete = appSettingsRepo.getBoolean(
+                    BooleanSetting.SeparateInstallCompleteNotification,
+                    true,
+                ).first(),
+                successAutoClearSeconds = appSettingsRepo.getInt(IntSetting.NotificationSuccessAutoClearSeconds, 0).first(),
             )
 
             val isModernEligible = Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA
@@ -217,6 +236,19 @@ class SessionNotifierImpl(
                         // Delegate to the correct builder strategy
                         val notification = activeBuilder.build(payload)
 
+                        val isInstallResult = progress.isInstallResult()
+                        val postSeparateResult = isInstallResult && settings.separateInstallComplete
+                        // Mi Island and Live Activity must keep one continuous notification key:
+                        // cancelling and re-posting the same key gives them a fresh post without
+                        // splitting the live surface into two notifications.
+                        val keepsContinuousKey = settings.showMiIsland || canAnimate
+
+                        if (!postSeparateResult && hasStandaloneResult) {
+                            // The session returned to a progress state; the stale result is dropped.
+                            notificationManager.cancel(RESULT_NOTIFICATION_TAG, notificationId)
+                            hasStandaloneResult = false
+                        }
+
                         setNotificationThrottled(
                             notification,
                             progress,
@@ -224,6 +256,9 @@ class SessionNotifierImpl(
                             settings.showMiIslandBlockingInterval,
                             currentRequiresAnimation,
                             settings.miIslandBypassRestriction,
+                            standaloneResult = postSeparateResult && !keepsContinuousKey,
+                            forceRelaunch = postSeparateResult && keepsContinuousKey,
+                            timeoutAfterMs = if (postSeparateResult) settings.successAutoClearSeconds * 1000L else 0L,
                         )
 
                         val elapsedTime = System.currentTimeMillis() - sessionStartTime
@@ -280,6 +315,9 @@ class SessionNotifierImpl(
         blockInterval: Int,
         requiresAnimation: Boolean = false,
         isBypassEnabled: Boolean = false,
+        standaloneResult: Boolean = false,
+        forceRelaunch: Boolean = false,
+        timeoutAfterMs: Long = 0L,
     ) {
         if (notification == null) {
             setNotificationImmediate(null)
@@ -357,7 +395,15 @@ class SessionNotifierImpl(
         }
 
         if (shouldUpdate) {
-            setNotificationImmediate(notification, isMiIsland, isBypassEnabled, blockInterval)
+            setNotificationImmediate(
+                notification,
+                isMiIsland,
+                isBypassEnabled,
+                blockInterval,
+                standaloneResult,
+                forceRelaunch,
+                timeoutAfterMs,
+            )
             lastNotificationUpdateTime = currentTime
             if (currentProgress >= 0) lastProgressValue = currentProgress
             lastProgressClass = progress::class
@@ -371,17 +417,69 @@ class SessionNotifierImpl(
         isMiIsland: Boolean = false,
         isBypassEnabled: Boolean = false,
         blockInterval: Int = 100,
+        standaloneResult: Boolean = false,
+        forceRelaunch: Boolean = false,
+        timeoutAfterMs: Long = 0L,
     ) {
         if (notification == null) {
             notificationManager.cancel(notificationId)
+            notificationManager.cancel(RESULT_NOTIFICATION_TAG, notificationId)
+            hasStandaloneResult = false
+            return
+        }
+
+        val target = if (standaloneResult || forceRelaunch) {
+            // A result must be alertable: the progress flags would otherwise keep the
+            // platform treating it as an in-place update of an ongoing notification.
+            notification.asResultNotification(timeoutAfterMs)
         } else {
-            if (isMiIsland) {
-                notifyWithXiaomiMagic(notificationId, notification, isBypassEnabled, blockInterval)
-            } else {
-                notificationManager.notify(notificationId, notification)
+            notification
+        }
+
+        when {
+            standaloneResult -> {
+                // The completion is posted under its own key, so the platform alerts again.
+                // The progress notification is dropped to avoid two identical results.
+                notificationManager.cancel(notificationId)
+                notificationManager.notify(RESULT_NOTIFICATION_TAG, notificationId, target)
+                hasStandaloneResult = true
             }
+
+            forceRelaunch -> {
+                // Mi Island / Live Activity keep one key, but the cancelled re-post still
+                // counts as a fresh post for alerting purposes.
+                notificationManager.cancel(notificationId)
+                if (isMiIsland) {
+                    notifyWithXiaomiMagic(notificationId, target, isBypassEnabled, blockInterval)
+                } else {
+                    notificationManager.notify(notificationId, target)
+                }
+            }
+
+            isMiIsland -> notifyWithXiaomiMagic(notificationId, target, isBypassEnabled, blockInterval)
+
+            else -> notificationManager.notify(notificationId, target)
         }
     }
+
+    /**
+     * A completion notification is a normal, dismissible and alertable notification. Clearing the
+     * progress flags is what makes the platform (and OEM notification renderers) treat the post as
+     * new instead of an in-place update, which is the reason a finished install stayed silent.
+     */
+    private fun Notification.asResultNotification(timeoutAfterMs: Long): Notification = apply {
+        flags = flags and Notification.FLAG_ONGOING_EVENT.inv()
+        flags = (flags and Notification.FLAG_ONLY_ALERT_ONCE.inv()) or Notification.FLAG_AUTO_CANCEL
+        if (timeoutAfterMs > 0 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            // Let the system dismiss it on its own, so the auto-clear still works if the
+            // process is killed before the session countdown finishes.
+            timeoutAfter = timeoutAfterMs
+        }
+    }
+
+    private fun ProgressEntity.isInstallResult(): Boolean = this is ProgressEntity.InstallSuccess ||
+        this is ProgressEntity.InstallFailed ||
+        this is ProgressEntity.InstallCompleted
 
     @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
     private fun notifyWithXiaomiMagic(

@@ -23,6 +23,7 @@ class NotificationSettingsViewModel(appSettingsRepo: AppSettingsRepository, priv
             miIslandBypassRestriction = prefs.useMiIslandBypassRestriction,
             miIslandOuterGlow = prefs.useMiIslandOuterGlow,
             successAutoClearSeconds = prefs.notificationSuccessAutoClearSeconds,
+            separateInstallCompleteNotification = prefs.separateInstallCompleteNotification,
             showDialogOnPress = prefs.showDialogWhenPressingNotification,
             miIslandBlockingInterval = prefs.useMiIslandBlockingIntervalMs,
         )
@@ -55,6 +56,10 @@ class NotificationSettingsViewModel(appSettingsRepo: AppSettingsRepository, priv
 
             is NotificationSettingsAction.ChangeAutoClearSeconds -> viewModelScope.launch {
                 updateSetting(IntSetting.NotificationSuccessAutoClearSeconds, action.seconds)
+            }
+
+            is NotificationSettingsAction.ChangeSeparateInstallCompleteNotification -> viewModelScope.launch {
+                updateSetting(BooleanSetting.SeparateInstallCompleteNotification, action.enabled)
             }
 
             is NotificationSettingsAction.ChangeShowDialogOnPress -> viewModelScope.launch {

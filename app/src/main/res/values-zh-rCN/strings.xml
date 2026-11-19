@@ -968,6 +968,8 @@
     <string name="notification_style_live_activity">实时活动通知</string>
     <string name="notification_style_mi_island">小米超级岛</string>
     <string name="notification_style_unsupported_desc">仅支持标准通知样式</string>
+    <string name="notification_separate_install_complete">安装完成单独通知</string>
+    <string name="notification_separate_install_complete_desc">安装结束后重新发出一条完成通知，而不是把进度通知改成安装结果</string>
     <string name="lab_mi_island_bypass_restriction">绕过超级岛限制（仅 Shizuku）</string>
     <string name="lab_mi_island_bypass_restriction_desc">绕过超级岛系统签名验证限制</string>
     <string name="lab_mi_island_outer_glow">外发光效果</string>

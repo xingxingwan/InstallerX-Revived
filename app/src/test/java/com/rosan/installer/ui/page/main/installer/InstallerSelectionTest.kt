@@ -580,6 +580,7 @@ class InstallerSelectionTest {
             showDialogWhenPressingNotification = false,
             closeSessionCountDown = 0,
             notificationSuccessAutoClearSeconds = 0,
+            separateInstallCompleteNotification = false,
             versionCompareInSingleLine = false,
             sdkCompareInMultiLine = false,
             showOPPOSpecial = false,
