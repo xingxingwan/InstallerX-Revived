@@ -466,6 +466,11 @@ class SessionNotifierImpl(
      * A completion notification is a normal, dismissible and alertable notification. Clearing the
      * progress flags is what makes the platform (and OEM notification renderers) treat the post as
      * new instead of an in-place update, which is the reason a finished install stayed silent.
+     *
+     * Auto-clear goes through [Notification.Builder.setTimeoutAfter]. The public SDK only exposes
+     * [Notification.getTimeoutAfter], so `timeoutAfter` is a `val` and cannot be assigned. The
+     * builder adopts this instance and writes the timeout onto it. [Notification.Builder.build]
+     * is intentionally not called here: it rebuilds styles and would disturb a live notification.
      */
     private fun Notification.asResultNotification(timeoutAfterMs: Long): Notification = apply {
         flags = flags and Notification.FLAG_ONGOING_EVENT.inv()
@@ -473,7 +478,7 @@ class SessionNotifierImpl(
         if (timeoutAfterMs > 0 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             // Let the system dismiss it on its own, so the auto-clear still works if the
             // process is killed before the session countdown finishes.
-            timeoutAfter = timeoutAfterMs
+            Notification.Builder.recoverBuilder(context, this).setTimeoutAfter(timeoutAfterMs)
         }
     }
 
